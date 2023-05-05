@@ -5,12 +5,14 @@ import time
 import argparse
 from datetime import datetime
 import requests
-from gitlab_export import config, gitlab
-
+from gitlab_export import config
+from gitlab_export.gitlab import Api
 
 return_code = 0
 
-if __name__ == '__main__':
+def main():
+    global return_code
+
     # Parsing arguments
     parser = argparse.ArgumentParser(
         description="""
@@ -42,7 +44,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if not os.path.isfile(args.config):
-        print("Unable to find config file %s" % (args.config))
+        print(f"Unable to find config file {args.config}")
 
     c = config.Config(args.config)
     token = c.config["gitlab"]["access"]["token"]
@@ -56,14 +58,15 @@ if __name__ == '__main__':
     max_tries_number = c.config['gitlab'].get('max_tries_number', 12)
     retention_period = c.config['backup'].get('retention_period', 0)
     exclude_projects = c.config["gitlab"].get('exclude_projects', [])
-    if not ((type(retention_period) == int or type(retention_period) == float) and (retention_period >= 0)):
+    if not (isinstance(retention_period, (int, float)) and retention_period >= 0):
         print("Invalid value for retention_period. ignoring")
         retention_period = 0
 
     # Init gitlab api object
     if args.debug:
-        print("%s, token" % (gitlab_url))
-    gitlab = gitlab.Api(gitlab_url, token, ssl_verify)
+        print(f"{gitlab_url}, token")
+
+    gitlab = Api(gitlab_url, token, ssl_verify)
 
     # Export each project
     export_projects = []
@@ -86,11 +89,11 @@ if __name__ == '__main__':
         for gitlabProject in projects:
             if re.match(ignored_project_pattern, gitlabProject):
                 if args.debug:
-                    print("Removing project '%s' from export (exclusion: '%s'): " % (str(gitlabProject), str(ignored_project_pattern)))
+                    print(f"Removing project '{gitlabProject}' from export (exclusion: '{ignored_project_pattern}'): ")
                 export_projects.remove(gitlabProject)
 
     if args.debug:
-        print("Projects to export: " + str(export_projects))
+        print(f"Projects to export: {export_projects}")
 
     if args.noop:
         print("Not running actual export because of -n/--noop flag.")
@@ -98,53 +101,49 @@ if __name__ == '__main__':
 
     for project in export_projects:
         if args.debug:
-            print("Exporting %s" % (project))
+            print(f"Exporting {project}")
 
         # Download project to our destination
         destination = c.config["backup"]["destination"]
         if c.config["backup"]["project_dirs"]:
-            destination += "/" + project
+            destination += f"/{project}"
 
         # Create directories
         if not os.path.isdir(destination):
             try:
                 os.makedirs(destination)
             except Exception:
-                print("Unable to create directories %s" % (destination), file=sys.stderr)
+                print(f"Unable to create directories {destination}", file=sys.stderr)
                 sys.exit(1)
 
         if args.debug:
-            print(" Destination %s" % (destination))
+            print(f" Destination {destination}")
 
         # Prepare actual date
         d = datetime.now()
         # File template from config
         file_tmpl = c.config["backup"]["backup_name"]
-        # Projectname in dest_file
-        dest_file = destination + "/" + file_tmpl.replace(
-            "{PROJECT_NAME}",
-            project.replace("/", "-")
-        )
+        # Project name in dest_file
+        dest_file = destination + "/" + file_tmpl.replace("{PROJECT_NAME}", project.replace("/", "-"))
         # Date in dest_file
-        dest_file = dest_file.replace(
-            "{TIME}", d.strftime(c.config["backup"]["backup_time_format"].replace(" ", "_")))
+        dest_file = dest_file.replace("{TIME}", d.strftime(c.config["backup"]["backup_time_format"].replace(" ", "_")))
 
         if args.debug:
-            print(" Destination file %s" % (dest_file))
+            print(f" Destination file {dest_file}")
 
         if os.path.isfile(dest_file):
             if not args.force:
-                print("File %s already exists" % (dest_file), file=sys.stderr)
+                print(f"File {dest_file} already exists", file=sys.stderr)
                 return_code += 1
                 continue
             else:
-                print("File %s already exists - will be overwritten" % (dest_file))
+                print(f"File {dest_file} already exists - will be overwritten")
                 os.remove(dest_file)
 
         # Purge old files, if applicable
         if retention_period > 0:
             if args.debug:
-                print(" Purging files older than %.2f days in the folder %s" % (retention_period, destination))
+                print(f" Purging files older than {retention_period:.2f} days in the folder {destination}")
 
             now = time.time()
             for f in os.listdir(destination):
@@ -155,7 +154,7 @@ if __name__ == '__main__':
                 if os.path.isfile(f):
                     if os.stat(f).st_mtime < now - (retention_period * 86400):
                         if args.debug:
-                            print("   deleting backup %s" % (f))
+                            print(f"   deleting backup {f}")
                         os.remove(f)
 
         # Initiate export
@@ -164,11 +163,11 @@ if __name__ == '__main__':
         # Export successful
         if status:
             if args.debug:
-                print("Success for %s" % (project))
+                print(f"Success for {project}")
             # Get URL from gitlab object
             url = gitlab.download_url["api_url"]
             if args.debug:
-                print(" URL: %s" % (url))
+                print(f" URL: {url}")
 
             # Download file
             r = requests.get(
@@ -185,22 +184,22 @@ if __name__ == '__main__':
                             f.write(chunk)
             else:
                 print(
-                    "Unable to download project %s. Got code %d: %s" % (
-                        project,
-                        r.status_code,
-                        r.text),
+                    f"Unable to download project {project}. Got code {r.status_code}: {r.text}",
                     file=sys.stderr)
                 return_code += 1
 
         else:
             # Export for project unsuccessful
-            print("Export failed for project %s" % (project), file=sys.stderr)
+            print(f"Export failed for project {project}", file=sys.stderr)
             return_code += 1
 
         # If set, wait between exports
         if project != export_projects[-1]:
             if args.debug:
-                print("Waiting between exports for %d seconds" % (wait_between_exports))
+                print(f"Waiting between exports for {wait_between_exports} seconds")
             time.sleep(wait_between_exports)
 
     sys.exit(return_code)
+
+if __name__ == '__main__':
+    main()
