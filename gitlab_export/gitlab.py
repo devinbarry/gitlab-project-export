@@ -1,4 +1,3 @@
-from __future__ import print_function
 import requests
 import urllib
 import sys
@@ -8,10 +7,10 @@ import re
 
 
 class Api:
-    '''Api class for gitlab'''
+    """Api class for gitlab"""
 
     def __init__(self, gitlab_url, token, ssl_verify=True):
-        '''Init config object'''
+        """Init config object"""
         self.headers = {"PRIVATE-TOKEN": token}
         self.api_url = gitlab_url + "/api/v4"
         self.download_url = None
@@ -19,7 +18,7 @@ class Api:
         self.ssl_verify = ssl_verify
 
     def __api_export(self, project_url):
-        '''Send export request to API'''
+        """Send export request to API"""
         self.download_url = None
         try:
             return requests.post(
@@ -32,7 +31,7 @@ class Api:
             sys.exit(1)
 
     def __api_import(self, project_name, namespace, filename):
-        '''Send import request to API'''
+        """Send import request to API"""
         data = {
             "path": project_name,
             "namespace": namespace,
@@ -49,7 +48,7 @@ class Api:
             sys.exit(1)
 
     def __api_status(self, project_url):
-        '''Check project status'''
+        """Check project status"""
         return requests.get(
             self.api_url + "/projects/" +
             project_url + "/export",
@@ -57,7 +56,7 @@ class Api:
             headers=self.headers)
 
     def __api_get(self, endpoint):
-        ''' Get api endpoint data '''
+        """ Get api endpoint data """
         try:
             return requests.get(
                 self.api_url + endpoint,
@@ -68,7 +67,7 @@ class Api:
             sys.exit(1)
 
     def __api_post(self, endpoint, data):
-        ''' POST api endpoint data '''
+        """ POST api endpoint data """
         try:
             return requests.post(
                 self.api_url + endpoint,
@@ -80,7 +79,7 @@ class Api:
             sys.exit(1)
 
     def __api_import_status(self, project_url):
-        '''Check project import status'''
+        """Check project import status"""
         return requests.get(
             self.api_url+"/projects/" +
             project_url + "/import",
@@ -88,7 +87,7 @@ class Api:
             headers=self.headers)
 
     def project_list(self, path_glob="", membership="True", archived="False"):
-        ''' List projects based on glob path '''
+        """List projects based on glob path"""
         urlpath = '/projects?simple=True&membership=%s&archived=%s&per_page=50' % (membership, archived)
         page = 1
         output = []
@@ -118,10 +117,10 @@ class Api:
         return output
 
     def project_export(self, project_path, max_tries_number):
-        ''' Export Gitlab project
-        When project export is finished, store download URLs
-        in objects variable download_url ready to be downloaded'''
-
+        """
+        Export Gitlab project. When project export is finished, store download URLs
+        in objects variable download_url ready to be downloaded.
+        """
         url_project_path = urllib.parse.quote(project_path, safe='')
 
         # Let's export project
@@ -188,7 +187,7 @@ class Api:
             return False
 
     def project_import(self, project_path, filepath):
-        ''' Import project to GitLab from file'''
+        """ Import project to GitLab from file"""
         url_project_path = urllib.parse.quote(project_path, safe='')
         project_name = os.path.basename(project_path)
         namespace = os.path.dirname(project_path)
