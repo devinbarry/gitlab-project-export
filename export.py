@@ -133,7 +133,7 @@ def export_project(args, gitlab, project, destination, dest_file, max_tries_numb
     status = gitlab.project_export(project, max_tries_number)
 
     if status:
-        download_exported_project(gitlab, project, dest_file, ssl_verify, token)
+        return_code += download_exported_project(gitlab, project, dest_file, ssl_verify, token)
     else:
         print(f"Export failed for project {project}", file=sys.stderr)
         return_code += 1
@@ -160,7 +160,9 @@ def purge_old_files(destination, retention_period):
                 os.remove(f)
 
 def download_exported_project(gitlab, project, dest_file, ssl_verify, token):
-    global return_code
+    """
+    function returns either 0 (success) or 1 (failure).
+    """
     if debug:
         print(f"Success for {project}")
 
@@ -170,14 +172,16 @@ def download_exported_project(gitlab, project, dest_file, ssl_verify, token):
 
     r = requests.get(url, allow_redirects=True, stream=True, verify=ssl_verify, headers={"PRIVATE-TOKEN": token})
 
-    if r.status_code >= 200 and r.status_code < 300:
+    if 200 <= r.status_code < 300:
         with open(dest_file, 'wb') as f:
             for chunk in r.iter_content(chunk_size=1024):
                 if chunk:
                     f.write(chunk)
+        return 0
     else:
         print(f"Unable to download project {project}. Got code {r.status_code}: {r.text}", file=sys.stderr)
-        return_code += 1
+        return 1
+
 
 
 def main():
