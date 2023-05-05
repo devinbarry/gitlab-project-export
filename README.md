@@ -43,7 +43,7 @@ pip install -f requirements.txt
 ## Usage
 
 ```bash
-usage: gitlab-project-export.py [-h] [-c CONFIG] [-d] [-f]
+usage: export.py [-h] [-c CONFIG] [-d] [-f]
 
 optional arguments:
   -h, --help  show this help message and exit
@@ -54,7 +54,7 @@ optional arguments:
 ```
 
 ```bash
-usage: gitlab-project-import.py [-h] [-c CONFIG] [-f FILEPATH] [-p PROJECT_PATH] [-d]
+usage: import.py [-h] [-c CONFIG] [-f FILEPATH] [-p PROJECT_PATH] [-d]
 
 optional arguments:
   -h, --help       show this help message and exit
@@ -104,7 +104,7 @@ With following content
 ```bash
 MAILTO=your_email@here.tld
 
-0 1 * * * root /path/to/cloned-repo/gitlab-project-export.py -c /etc/gitlab-export/config.yml
+0 1 * * * root /path/to/cloned-repo/export.py -c /etc/gitlab-export/config.yml
 
 ```
 
@@ -142,7 +142,7 @@ gitlab:                                                   - gitlab configuration
 Now it's time to export our projects
 
 ```bash
-./gitlab-project-export.py -c ./config1.yml -d
+./export.py -c ./config1.yml -d
 ```
 
 Your projects are now exported in `/data/export-dir`
@@ -150,8 +150,8 @@ Your projects are now exported in `/data/export-dir`
 After that we use `gitlab-project-import.py` with `config2.yml` for importing into our pricate gitlab instance.
 
 ```bash
-./gitlab-project-import.py -c ./config2.yml -f ./gitlab-com-rvojcik-project1-20181224.tar.gz -p "rvojcik/project1"
-./gitlab-project-import.py -c ./config2.yml -f ./gitlab-com-rvojcik-project2-20181224.tar.gz -p "rvojcik/project2"
+./import.py -c ./config2.yml -f ./gitlab-com-rvojcik-project1-20181224.tar.gz -p "rvojcik/project1"
+./import.py -c ./config2.yml -f ./gitlab-com-rvojcik-project2-20181224.tar.gz -p "rvojcik/project2"
 ```
 
 Done ;)

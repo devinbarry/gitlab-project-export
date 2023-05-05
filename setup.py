@@ -24,8 +24,8 @@ setup(
     packages=find_packages(),
     install_requires = install_reqs,
     scripts=[
-        'gitlab-project-export.py',
-        'gitlab-project-import.py',
+        'export.py',
+        'import.py',
     ],
     keywords=['gitlab-backup', 'gitlab-export', 'export', 'gitlab', 'backup'],
     classifiers=[
