@@ -98,52 +98,34 @@ class Api:
 
         # Export project
         response = self._api_export(url_project_path)
-        if 200 <= response.status_code < 300:
-            max_tries = max_tries_number
-            export_status = False
-
-            while max_tries != 0:
-                max_tries -= 1
-
-                try:
-                    response = self._api_status(url_project_path)
-                except requests.exceptions.RequestException as e:
-                    print(e, file=sys.stderr)
-                    return False
-
-                if response.status_code == requests.codes.ok:
-                    json_data = response.json()
-
-                    if "export_status" in json_data:
-                        status = json_data["export_status"]
-
-                        if status == "finished" and "_links" in json_data:
-                            export_status = True
-                            break
-                        elif status in ["queued", "finished", "started", "regeneration_in_progress"]:
-                            max_tries = max_tries_number
-                    else:
-                        status = "unknown"
-                else:
-                    print(f"API did not respond well with {response.status_code} {response.text}", file=sys.stderr)
-                    break
-
-                time.sleep(5)
-
-            if export_status:
-                if "_links" in json_data:
-                    print('Download URL: ' + json_data["_links"]["api_url_to_repo"] + '/archive')
-                    print(json_data["_links"])
-                    return True
-                else:
-                    print(f"Unable to find download link in API response: {json_data}")
-                    return False
-            else:
-                print(f"Export failed, {response.text}", file=sys.stderr)
-                return False
-        else:
-            print(f"API did not respond well with {response.status_code} {response.text}", file=sys.stderr)
+        if not 200 <= response.status_code < 300:
+            print(f"API responded with an unexpected status: {response.status_code} - {response.text}", file=sys.stderr)
             return False
+
+        for _ in range(max_tries_number):
+            try:
+                response = self._api_status(url_project_path)
+            except requests.exceptions.RequestException as e:
+                print(e, file=sys.stderr)
+                return False
+
+            if response.status_code != requests.codes.ok:
+                print(f"API responded with an unexpected status: {response.status_code} - {response.text}",
+                      file=sys.stderr)
+                break
+
+            json_data = response.json()
+            status = json_data.get("export_status")
+
+            if status == "finished" and "_links" in json_data:
+                print('Download URL: ' + json_data["_links"]["api_url_to_repo"] + '/archive')
+                print(json_data["_links"])
+                return True
+
+            time.sleep(5)
+
+        print(f"Export failed, {response.text}", file=sys.stderr)
+        return False
 
     def project_import(self, project_path, filepath):
         """ Import project to GitLab from file"""
