@@ -7,9 +7,6 @@ from datetime import datetime
 import requests
 from gitlab_export import config, gitlab
 
-# Find our libs
-sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-
 
 return_code = 0
 
