@@ -123,68 +123,54 @@ class Api:
         """
         url_project_path = urllib.parse.quote(project_path, safe='')
 
-        # Let's export project
-        r = self.__api_export(url_project_path)
-        if ((float(r.status_code) >= 200) and (float(r.status_code) < 300)):
-            # Api good, check for status
+        # Export project
+        response = self.__api_export(url_project_path)
+        if 200 <= response.status_code < 300:
             max_tries = max_tries_number
-            s = ""
-            status_export = False
+            export_status = False
+
             while max_tries != 0:
-                # Decrement tries
                 max_tries -= 1
 
                 try:
-                    r = self.__api_status(url_project_path)
+                    response = self.__api_status(url_project_path)
                 except requests.exceptions.RequestException as e:
                     print(e, file=sys.stderr)
                     return False
 
-                # Check API reply status
-                if (r.status_code == requests.codes.ok):
-                    json = r.json()
+                if response.status_code == requests.codes.ok:
+                    json_data = response.json()
 
-                    # Check export status
-                    if "export_status" in json.keys():
-                        s = json["export_status"]
-                        # Export finished and _links appear in response
-                        if s == "finished" and "_links" in json.keys():
-                            status_export = True
+                    if "export_status" in json_data:
+                        status = json_data["export_status"]
+
+                        if status == "finished" and "_links" in json_data:
+                            export_status = True
                             break
-
-                        if s == "queued" or s == "finished" or s == "started" or s == "regeneration_in_progress":
-                            # Reset counter, we are waiting for export
+                        elif status in ["queued", "finished", "started", "regeneration_in_progress"]:
                             max_tries = max_tries_number
                     else:
-                        s = "unknown"
-
+                        status = "unknown"
                 else:
-                    print("API not respond well with %s %s" % (
-                        str(r.status_code),
-                        str(r.text)),
-                        file=sys.stderr)
+                    print(f"API did not respond well with {response.status_code} {response.text}", file=sys.stderr)
                     break
 
-                # Wait litle bit
                 time.sleep(5)
 
-            if status_export:
-                if "_links" in json.keys():
-                    self.download_url = json["_links"]
+            if export_status:
+                if "_links" in json_data:
+                    self.download_url = json_data["_links"]
                     return True
                 else:
-                    print("Unable to find download link in API response: %s" % (str(json)))
+                    print(f"Unable to find download link in API response: {json_data}")
                     return False
             else:
-                print("Export failed, %s" % (str(r.text)), file=sys.stderr)
+                print(f"Export failed, {response.text}", file=sys.stderr)
                 return False
-
         else:
-            print("API not respond well with %s %s" % (
-                str(r.status_code),
-                str(r.text)),
-                file=sys.stderr)
+            print(f"API did not respond well with {response.status_code} {response.text}", file=sys.stderr)
             return False
+
 
     def project_import(self, project_path, filepath):
         """ Import project to GitLab from file"""
