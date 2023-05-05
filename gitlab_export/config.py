@@ -1,6 +1,7 @@
 import yaml
 import os
 import sys
+from contextlib import contextmanager
 
 
 class Config:
@@ -8,35 +9,34 @@ class Config:
 
     def __init__(self, config_file):
         """Init config object"""
-
         self.config_file = config_file
-        self.config_open()
-        self.config_load()
-        self.config_process()
-        self.config_close()
+        self.config = self.load_config()
 
-    def config_open(self):
+    @contextmanager
+    def open_config_file(self):
         try:
-            self.conf_fh = open(self.config_file, 'r')
+            conf_fh = open(self.config_file, 'r')
+            yield conf_fh
         except IOError as e:
-            print("({})".format(e))
+            print(f"({e})", file=sys.stderr)
             sys.exit(1)
+        finally:
+            conf_fh.close()
 
-    def config_close(self):
-        self.conf_fh.close()
+    def load_config(self):
+        with self.open_config_file() as conf_fh:
+            config = yaml.load(conf_fh.read(), Loader=yaml.FullLoader)
+            self.process_config(config)
+            return config
 
-    def config_process(self):
+    def process_config(self, config):
         """ Process configuration file, mainly to maintain backwards compatibility of new features """
         ssl_verify_default = True
-        # Set default if not exist
-        if not self.config['gitlab']['access'].__contains__('ssl_verify'):
-            self.config['gitlab']['access']['ssl_verify'] = ssl_verify_default
-        
-        # Better safe than sorry. If file or directory not exist set default
-        if isinstance(self.config['gitlab']['access']['ssl_verify'], str):
-            if not os.path.exists(self.config['gitlab']['access']['ssl_verify']):
-                print("WARNING: provided path to ssl bundle not exist, setting to %s" % (str(ssl_verify_default)), file=sys.stderr)
-                self.config['gitlab']['access']['ssl_verify'] = ssl_verify_default
+        gitlab_config = config.setdefault('gitlab', {}).setdefault('access', {})
+        gitlab_config.setdefault('ssl_verify', ssl_verify_default)
 
-    def config_load(self):
-        self.config = yaml.load(self.conf_fh.read(), Loader=yaml.FullLoader)
+        # Better safe than sorry. If file or directory not exist set default
+        if isinstance(gitlab_config['ssl_verify'], str):
+            if not os.path.exists(gitlab_config['ssl_verify']):
+                print(f"WARNING: provided path to ssl bundle not exist, setting to {ssl_verify_default}", file=sys.stderr)
+                gitlab_config['ssl_verify'] = ssl_verify_default
