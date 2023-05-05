@@ -96,3 +96,8 @@ venv.bak/
 
 # PyCharm files
 .idea/
+
+# Project config file
+config.yaml
+config.yml
+
