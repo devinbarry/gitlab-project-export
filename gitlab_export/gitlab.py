@@ -13,7 +13,6 @@ class Api:
         """Init config object"""
         self.headers = {"PRIVATE-TOKEN": token}
         self.api_url = gitlab_url + "/api/v4"
-        self.download_url = None
         self.project_array = False
         self.ssl_verify = ssl_verify
 
@@ -30,7 +29,6 @@ class Api:
 
     def _api_export(self, project_url):
         """Send export request to API"""
-        self.download_url = None
         return self._api_request("POST", f"/projects/{project_url}/export")
 
     def _api_import(self, project_name, namespace, filename):
@@ -41,9 +39,7 @@ class Api:
             "overwrite": True
         }
         with open(filename, 'rb') as file:
-            return self._api_request("POST", "/projects/import",
-                                     data=data,
-                                     files={"file": file})
+            return self._api_request("POST", "/projects/import", data=data, files={"file": file})
 
     def _api_status(self, project_url):
         """Check project status"""
@@ -136,7 +132,8 @@ class Api:
 
             if export_status:
                 if "_links" in json_data:
-                    self.download_url = json_data["_links"]
+                    print('Download URL: ' + json_data["_links"]["api_url_to_repo"] + '/archive')
+                    print(json_data["_links"])
                     return True
                 else:
                     print(f"Unable to find download link in API response: {json_data}")
@@ -157,7 +154,6 @@ class Api:
         # Import project
         response = self._api_import(project_name, namespace, filepath)
         if 200 <= response.status_code < 300:
-            status = ""
             status_import = False
 
             while True:
@@ -169,15 +165,12 @@ class Api:
 
                     # Check import status
                     if "import_status" in json_data:
-                        status = json_data["import_status"]
-                        if status == "finished":
+                        if json_data["import_status"] == "finished":
                             status_import = True
                             break
-                        elif status == "failed":
+                        elif json_data["import_status"] == "failed":
                             status_import = False
                             break
-                    else:
-                        status = "unknown"
                 else:
                     print(f"API did not respond well with {response.status_code} {response.text}", file=sys.stderr)
                     break
