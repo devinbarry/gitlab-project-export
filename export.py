@@ -109,12 +109,11 @@ def main():
             destination += f"/{project}"
 
         # Create directories
-        if not os.path.isdir(destination):
-            try:
-                os.makedirs(destination)
-            except Exception:
-                print(f"Unable to create directories {destination}", file=sys.stderr)
-                sys.exit(1)
+        try:
+            os.makedirs(destination, exist_ok=True)
+        except OSError as e:
+            print(f"Unable to create directories {destination}: {e}", file=sys.stderr)
+            sys.exit(1)
 
         if args.debug:
             print(f" Destination {destination}")
