@@ -17,95 +17,72 @@ class Api:
         self.project_array = False
         self.ssl_verify = ssl_verify
 
-    def __api_export(self, project_url):
-        """Send export request to API"""
-        self.download_url = None
+    def _api_request(self, method, endpoint, **kwargs):
+        """Generic API request wrapper with error handling"""
         try:
-            return requests.post(f"{self.api_url}/projects/{project_url}/export",
-                                 headers=self.headers,
-                                 verify=self.ssl_verify
-            )
+            response = requests.request(method, f"{self.api_url}{endpoint}",
+                                        headers=self.headers, verify=self.ssl_verify, **kwargs)
+            response.raise_for_status()
+            return response
         except requests.exceptions.RequestException as e:
             print(e, file=sys.stderr)
             sys.exit(1)
 
-    def __api_import(self, project_name, namespace, filename):
+    def _api_export(self, project_url):
+        """Send export request to API"""
+        self.download_url = None
+        return self._api_request("POST", f"/projects/{project_url}/export")
+
+    def _api_import(self, project_name, namespace, filename):
         """Send import request to API"""
         data = {
             "path": project_name,
             "namespace": namespace,
             "overwrite": True
         }
-        try:
-            with open(filename, 'rb') as file:
-                return requests.post(f"{self.api_url}/projects/import",
-                    data=data,
-                    files={"file": file},
-                    verify=self.ssl_verify,
-                    headers=self.headers
-                )
-        except requests.exceptions.RequestException as e:
-            print(e, file=sys.stderr)
-            sys.exit(1)
+        with open(filename, 'rb') as file:
+            return self._api_request("POST", "/projects/import",
+                                     data=data,
+                                     files={"file": file})
 
-    def __api_status(self, project_url):
+    def _api_status(self, project_url):
         """Check project status"""
-        return requests.get(f"{self.api_url}/projects/{project_url}/export",
-            verify=self.ssl_verify,
-            headers=self.headers
-        )
+        return self._api_request("GET", f"/projects/{project_url}/export")
 
-    def __api_get(self, endpoint):
+    def _api_get(self, endpoint, params=None):
         """Get API endpoint data"""
-        try:
-            return requests.get(f"{self.api_url}{endpoint}",
-                verify=self.ssl_verify,
-                headers=self.headers
-            )
-        except requests.exceptions.RequestException as e:
-            print(e, file=sys.stderr)
-            sys.exit(1)
+        return self._api_request("GET", endpoint, params=params)
 
-    def __api_post(self, endpoint, data):
+    def _api_post(self, endpoint, data):
         """POST API endpoint data"""
-        try:
-            return requests.post(f"{self.api_url}{endpoint}",
-                data=data,
-                verify=self.ssl_verify,
-                headers=self.headers
-            )
-        except requests.exceptions.RequestException as e:
-            print(e, file=sys.stderr)
-            sys.exit(1)
+        return self._api_request("POST", endpoint, data=data)
 
-    def __api_import_status(self, project_url):
+    def _api_import_status(self, project_url):
         """Check project import status"""
-        return requests.get(
-            f"{self.api_url}/projects/{project_url}/import",
-            verify=self.ssl_verify,
-            headers=self.headers
-        )
+        return self._api_request("GET", f"/projects/{project_url}/import")
 
     def project_list(self, path_glob="", membership="True", archived="False"):
         """List projects based on glob path"""
-        urlpath = '/projects?simple=True&membership=%s&archived=%s&per_page=50' % (membership, archived)
+        params = {
+            "simple": "True",
+            "membership": membership,
+            "archived": archived,
+            "per_page": "50"
+        }
         page = 1
         output = []
         if not self.project_array:
             while True:
-                r = self.__api_get(urlpath + "&page=" + str(page))
-                if r.status_code == 200:
-                    json = r.json()
-                    if len(json) > 0:
-                        for project_data in r.json():
-                            ppath = project_data["path_with_namespace"]
-                            output.append(ppath)
-                        page += 1
-                    else:
-                        break
+                params["page"] = str(page)
+                r = self._api_get('/projects', params=params)
+                json = r.json()
+                if len(json) > 0:
+                    for project_data in json:
+                        ppath = project_data["path_with_namespace"]
+                        output.append(ppath)
+                    page += 1
                 else:
-                    print("API returned %s" % (str(r.status_code)), file=sys.stderr)
-                    return False
+                    break
             self.project_array = output
 
         # Compare glob to projects
@@ -124,7 +101,7 @@ class Api:
         url_project_path = urllib.parse.quote(project_path, safe='')
 
         # Export project
-        response = self.__api_export(url_project_path)
+        response = self._api_export(url_project_path)
         if 200 <= response.status_code < 300:
             max_tries = max_tries_number
             export_status = False
@@ -133,7 +110,7 @@ class Api:
                 max_tries -= 1
 
                 try:
-                    response = self.__api_status(url_project_path)
+                    response = self._api_status(url_project_path)
                 except requests.exceptions.RequestException as e:
                     print(e, file=sys.stderr)
                     return False
@@ -178,13 +155,13 @@ class Api:
         namespace = os.path.dirname(project_path)
 
         # Import project
-        response = self.__api_import(project_name, namespace, filepath)
+        response = self._api_import(project_name, namespace, filepath)
         if 200 <= response.status_code < 300:
             status = ""
             status_import = False
 
             while True:
-                response = self.__api_import_status(url_project_path)
+                response = self._api_import_status(url_project_path)
 
                 # Check API reply status
                 if response.status_code == requests.codes.ok:
@@ -217,4 +194,3 @@ class Api:
             print(f"API did not respond well with {response.status_code} {response.text}", file=sys.stderr)
             print(response.text, file=sys.stderr)
             return False
-
