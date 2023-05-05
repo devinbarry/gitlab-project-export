@@ -1,7 +1,8 @@
 import sys
 import os
 import argparse
-from gitlab_export import config, gitlab
+from gitlab_export import config
+from gitlab_export.client import GitlabClient
 
 
 return_code = 0
@@ -44,7 +45,7 @@ if __name__ == '__main__':
     # Init gitlab api object
     if args.debug:
         print(f"{gitlab_url}, token")
-    gitlab = gitlab.Api(gitlab_url, token, ssl_verify)
+    gitlab = GitlabClient(gitlab_url, token, ssl_verify)
 
     # import project
     if args.project_path and args.filepath and os.path.isfile(args.filepath):

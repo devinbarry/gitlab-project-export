@@ -6,7 +6,7 @@ import argparse
 from datetime import datetime
 import requests
 from gitlab_export import config
-from gitlab_export.gitlab import Api
+from gitlab_export.client import GitlabClient
 
 return_code = 0
 debug = False
@@ -64,7 +64,7 @@ def prepare_config_variables(c):
 def init_gitlab_api(gitlab_url, token, ssl_verify):
     if debug:
         print(f"{gitlab_url}, token")
-    return Api(gitlab_url, token, ssl_verify)
+    return GitlabClient(gitlab_url, token, ssl_verify)
 
 
 def get_projects_to_export(gitlab, c, membership, include_archived, exclude_projects):

@@ -6,7 +6,7 @@ import os
 import re
 
 
-class Api:
+class GitlabClient:
     """Api class for gitlab"""
 
     def __init__(self, gitlab_url, token, ssl_verify=True):
