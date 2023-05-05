@@ -1,14 +1,6 @@
-#!/usr/bin/env python3
-
-from __future__ import print_function
 import sys
 import os
 import argparse
-import yaml
-from datetime import date
-import requests
-# Find our libs
-sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 from gitlab_export import config, gitlab
 
 
@@ -42,7 +34,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if not os.path.isfile(args.config):
-        print("Unable to find config file %s" % (args.config))
+        print(f"Unable to find config file {args.config}")
 
     c = config.Config(args.config)
     token = c.config["gitlab"]["access"]["token"]
@@ -51,18 +43,18 @@ if __name__ == '__main__':
 
     # Init gitlab api object
     if args.debug:
-        print("%s, token" % (gitlab_url))
+        print(f"{gitlab_url}, token")
     gitlab = gitlab.Api(gitlab_url, token, ssl_verify)
 
     # import project
     if args.project_path and args.filepath and os.path.isfile(args.filepath):
         if args.debug:
-            print("Importing %s" % (args.project_path))
+            print(f"Importing {args.project_path}")
         status = gitlab.project_import(args.project_path, args.filepath)
 
         # Import successful
         if status:
-            print("Import success for %s" % (args.project_path))
+            print(f"Import success for {args.project_path}")
             sys.exit(0)
         else:
             print("Import was not successful")
