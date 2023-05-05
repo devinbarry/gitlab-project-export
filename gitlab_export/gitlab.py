@@ -21,11 +21,10 @@ class Api:
         """Send export request to API"""
         self.download_url = None
         try:
-            return requests.post(
-                self.api_url + "/projects/" +
-                project_url + "/export",
-                headers=self.headers,
-                verify=self.ssl_verify)
+            return requests.post(f"{self.api_url}/projects/{project_url}/export",
+                                 headers=self.headers,
+                                 verify=self.ssl_verify
+            )
         except requests.exceptions.RequestException as e:
             print(e, file=sys.stderr)
             sys.exit(1)
@@ -35,45 +34,46 @@ class Api:
         data = {
             "path": project_name,
             "namespace": namespace,
-            "overwrite": True}
+            "overwrite": True
+        }
         try:
-            return requests.post(
-                self.api_url + "/projects/import",
-                data=data,
-                files={"file": open(filename, 'rb')},
-                verify=self.ssl_verify,
-                headers=self.headers)
+            with open(filename, 'rb') as file:
+                return requests.post(f"{self.api_url}/projects/import",
+                    data=data,
+                    files={"file": file},
+                    verify=self.ssl_verify,
+                    headers=self.headers
+                )
         except requests.exceptions.RequestException as e:
             print(e, file=sys.stderr)
             sys.exit(1)
 
     def __api_status(self, project_url):
         """Check project status"""
-        return requests.get(
-            self.api_url + "/projects/" +
-            project_url + "/export",
+        return requests.get(f"{self.api_url}/projects/{project_url}/export",
             verify=self.ssl_verify,
-            headers=self.headers)
+            headers=self.headers
+        )
 
     def __api_get(self, endpoint):
-        """ Get api endpoint data """
+        """Get API endpoint data"""
         try:
-            return requests.get(
-                self.api_url + endpoint,
+            return requests.get(f"{self.api_url}{endpoint}",
                 verify=self.ssl_verify,
-                headers=self.headers)
+                headers=self.headers
+            )
         except requests.exceptions.RequestException as e:
             print(e, file=sys.stderr)
             sys.exit(1)
 
     def __api_post(self, endpoint, data):
-        """ POST api endpoint data """
+        """POST API endpoint data"""
         try:
-            return requests.post(
-                self.api_url + endpoint,
+            return requests.post(f"{self.api_url}{endpoint}",
                 data=data,
                 verify=self.ssl_verify,
-                headers=self.headers)
+                headers=self.headers
+            )
         except requests.exceptions.RequestException as e:
             print(e, file=sys.stderr)
             sys.exit(1)
@@ -81,10 +81,10 @@ class Api:
     def __api_import_status(self, project_url):
         """Check project import status"""
         return requests.get(
-            self.api_url+"/projects/" +
-            project_url + "/import",
+            f"{self.api_url}/projects/{project_url}/import",
             verify=self.ssl_verify,
-            headers=self.headers)
+            headers=self.headers
+        )
 
     def project_list(self, path_glob="", membership="True", archived="False"):
         """List projects based on glob path"""
