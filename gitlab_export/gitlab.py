@@ -171,58 +171,50 @@ class Api:
             print(f"API did not respond well with {response.status_code} {response.text}", file=sys.stderr)
             return False
 
-
     def project_import(self, project_path, filepath):
         """ Import project to GitLab from file"""
         url_project_path = urllib.parse.quote(project_path, safe='')
         project_name = os.path.basename(project_path)
         namespace = os.path.dirname(project_path)
 
-        # Let's import project
-        r = self.__api_import(project_name, namespace, filepath)
-        if ((float(r.status_code) >= 200) and (float(r.status_code) < 300)):
-            # Api good, check for status
-            s = ""
-            status_export = False
+        # Import project
+        response = self.__api_import(project_name, namespace, filepath)
+        if 200 <= response.status_code < 300:
+            status = ""
+            status_import = False
+
             while True:
-                r = self.__api_import_status(url_project_path)
+                response = self.__api_import_status(url_project_path)
 
                 # Check API reply status
-                if (r.status_code == requests.codes.ok):
-                    json = r.json()
+                if response.status_code == requests.codes.ok:
+                    json_data = response.json()
 
-                    # Check export status
-                    if "import_status" in json.keys():
-                        s = json["import_status"]
-                        if s == "finished":
+                    # Check import status
+                    if "import_status" in json_data:
+                        status = json_data["import_status"]
+                        if status == "finished":
                             status_import = True
                             break
-                        elif s == "failed":
+                        elif status == "failed":
                             status_import = False
                             break
                     else:
-                        s = "unknown"
-
+                        status = "unknown"
                 else:
-                    print("API not respond well with %s %s" % (
-                        str(r.status_code),
-                        str(r.text)),
-                        file=sys.stderr)
+                    print(f"API did not respond well with {response.status_code} {response.text}", file=sys.stderr)
                     break
 
-                # Wait litle bit
+                # Wait a little bit
                 time.sleep(1)
 
             if status_import:
                 return True
             else:
-                print("Import failed, %s" % (str(r.text)), file=sys.stderr)
+                print(f"Import failed, {response.text}", file=sys.stderr)
                 return False
-
         else:
-            print("API not respond well with %s %s" % (
-                str(r.status_code),
-                str(r.text)),
-                file=sys.stderr)
-            print(r.text, file=sys.stderr)
+            print(f"API did not respond well with {response.status_code} {response.text}", file=sys.stderr)
+            print(response.text, file=sys.stderr)
             return False
+
