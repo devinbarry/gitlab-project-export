@@ -152,38 +152,30 @@ class Api:
         namespace = os.path.dirname(project_path)
 
         # Import project
+        print(f"Importing project {project_path}")
         response = self._api_import(project_name, namespace, filepath)
-        if 200 <= response.status_code < 300:
-            status_import = False
+        if not 200 <= response.status_code < 300:
+            print(f"Error during import: {response.status_code} {response.text}", file=sys.stderr)
+            return False
 
-            while True:
-                response = self._api_import_status(url_project_path)
+        # Poll import status to check if import is successful
+        while True:
+            response = self._api_import_status(url_project_path)
 
-                # Check API reply status
-                if response.status_code == requests.codes.ok:
-                    json_data = response.json()
+            # Check API reply status
+            if response.status_code != requests.codes.ok:
+                print(f"Error during status check: {response.status_code} - {response.text}", file=sys.stderr)
+                return False
 
-                    # Check import status
-                    if "import_status" in json_data:
-                        if json_data["import_status"] == "finished":
-                            status_import = True
-                            break
-                        elif json_data["import_status"] == "failed":
-                            status_import = False
-                            break
-                else:
-                    print(f"API did not respond well with {response.status_code} {response.text}", file=sys.stderr)
-                    break
+            json_data = response.json()
+            import_status = json_data.get("import_status")
 
-                # Wait a little bit
-                time.sleep(1)
-
-            if status_import:
+            if import_status == "finished":
                 return True
-            else:
+            elif import_status == "failed":
                 print(f"Import failed, {response.text}", file=sys.stderr)
                 return False
-        else:
-            print(f"API did not respond well with {response.status_code} {response.text}", file=sys.stderr)
-            print(response.text, file=sys.stderr)
-            return False
+
+            # Wait a little bit
+            time.sleep(1)
+
