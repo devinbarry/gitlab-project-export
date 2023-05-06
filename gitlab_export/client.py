@@ -20,6 +20,8 @@ class GitlabClient:
         try:
             response = requests.request(method, f"{self.api_url}{endpoint}",
                                         headers=self.headers, verify=self.ssl_verify, **kwargs)
+            if response.status_code >= 400:
+                print(response.text)
             response.raise_for_status()
             return response
         except requests.exceptions.RequestException as e:
@@ -112,12 +114,12 @@ class GitlabClient:
 
             json_data = response.json()
             status = json_data.get("export_status")
+            project_name = json_data.get("path_with_namespace")
 
             if status == "finished" and "_links" in json_data:
-                download_url = json_data["_links"]["api_url"]
-                print(f'Download URL: {download_url})
-                print(json_data["_links"])
-                return download_url
+                print(f"Successfully exported {project_name}")
+                # Return download URL
+                return json_data["_links"]["api_url"]
             else:
                 print(f"Export status: {status}")
 
