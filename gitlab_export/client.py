@@ -13,7 +13,6 @@ class GitlabClient:
         """Init config object"""
         self.headers = {"PRIVATE-TOKEN": token}
         self.api_url = gitlab_url + "/api/v4"
-        self.project_array = False
         self.ssl_verify = ssl_verify
 
     def _api_request(self, method, endpoint, **kwargs):
@@ -27,9 +26,13 @@ class GitlabClient:
             print(e, file=sys.stderr)
             sys.exit(1)
 
-    def _api_export(self, project_url):
+    def _schedule_export(self, project_id):
         """Send export request to API"""
-        return self._api_request("POST", f"/projects/{project_url}/export")
+        return self._api_request("POST", f"/projects/{project_id}/export")
+
+    def _get_export_status(self, project_id):
+        """Check project status"""
+        return self._api_request("GET", f"/projects/{project_id}/export")
 
     def _api_import(self, project_name, namespace, filename):
         """Send import request to API"""
@@ -41,9 +44,7 @@ class GitlabClient:
         with open(filename, 'rb') as file:
             return self._api_request("POST", "/projects/import", data=data, files={"file": file})
 
-    def _api_status(self, project_url):
-        """Check project status"""
-        return self._api_request("GET", f"/projects/{project_url}/export")
+
 
     def _api_get(self, endpoint, params=None):
         """Get API endpoint data"""
@@ -57,8 +58,8 @@ class GitlabClient:
         """Check project import status"""
         return self._api_request("GET", f"/projects/{project_url}/import")
 
-    def project_list(self, path_glob="", membership="True", archived="False"):
-        """List projects based on glob path"""
+    def list_all_projects(self, path_glob="", membership="True", archived="False"):
+        """List all projects on server, optionally filtered based on glob path"""
         params = {
             "simple": "True",
             "membership": membership,
@@ -66,48 +67,44 @@ class GitlabClient:
             "per_page": "50"
         }
         page = 1
-        output = []
-        if not self.project_array:
-            while True:
-                params["page"] = str(page)
-                r = self._api_get('/projects', params=params)
-                json = r.json()
-                if len(json) > 0:
-                    for project_data in json:
-                        ppath = project_data["path_with_namespace"]
-                        output.append(ppath)
-                    page += 1
-                else:
-                    break
-            self.project_array = output
 
-        # Compare glob to projects
-        output = []
-        for project in self.project_array:
-            if re.match(path_glob, project):
-                output.append(project)
+        projects = {}
+        # Fetch all projects, 50 at a time
+        while True:
+            params["page"] = str(page)
+            r = self._api_get('/projects', params=params)
+            json = r.json()
+            if len(json) > 0:
+                for project_data in json:
+                    project_id = project_data["id"]
+                    ppath = project_data["path_with_namespace"]
+                    projects[project_id] = ppath
+                page += 1
+            else:
+                break
+
+        # Compare glob to projects, collecting only projects that match
+        output = {}
+        for id_, ppath in projects.items():
+            if re.match(path_glob, ppath):
+                output[ppath] = id_
 
         return output
 
-    def project_export(self, project_path, max_tries_number):
+    def project_export(self, project_id, status_check_max=12, seconds_between_checks=5):
         """
         Export Gitlab project. When project export is finished, store download URLs
         in objects variable download_url ready to be downloaded.
         """
-        url_project_path = urllib.parse.quote(project_path, safe='')
-
-        # Export project
-        response = self._api_export(url_project_path)
+        # Schedule project export
+        response = self._schedule_export(project_id)
         if not 200 <= response.status_code < 300:
             print(f"API responded with an unexpected status: {response.status_code} - {response.text}", file=sys.stderr)
             return False
 
-        for _ in range(max_tries_number):
-            try:
-                response = self._api_status(url_project_path)
-            except requests.exceptions.RequestException as e:
-                print(e, file=sys.stderr)
-                return False
+        # Check status of export at most status_check_max times
+        for _ in range(status_check_max):
+            response = self._get_export_status(project_id)
 
             if response.status_code != requests.codes.ok:
                 print(f"API responded with an unexpected status: {response.status_code} - {response.text}",
@@ -118,13 +115,15 @@ class GitlabClient:
             status = json_data.get("export_status")
 
             if status == "finished" and "_links" in json_data:
-                print('Download URL: ' + json_data["_links"]["api_url_to_repo"] + '/archive')
+                print('Download URL: ' + json_data["_links"]["api_url"])
                 print(json_data["_links"])
                 return True
+            else:
+                print(f"Export status: {status}")
 
-            time.sleep(5)
+            time.sleep(seconds_between_checks)
 
-        print(f"Export failed, {response.text}", file=sys.stderr)
+        print(f"Export failed: {response.text}", file=sys.stderr)
         return False
 
     def project_import(self, project_path, filepath):
