@@ -12,12 +12,12 @@ Confrms to the V4 API for Gitlab CE, EE and Gitlab.com. Tested against latest Gi
 - Purge old backups.
 - Can be used in cron.
 
-## Breaking Changes
+## Changes
 
 ### May 2023
 
 Project forked from [Robert Vojcik](https://github.com/rvojcik/gitlab-project-export) to add support for Gitlab CE 15.11.2 and to add a few features.
-Code cleaned up and refactored to use modern Python 3.9 features.
+Code cleaned up and refactored to use modern Python 3.10+ features.
 
 ## Prerequisite
 
@@ -28,12 +28,12 @@ Code cleaned up and refactored to use modern Python 3.9 features.
 Simply install via pip:
 
 
-`pip install git+https://github.com/rvojcik/gitlab-project-export`
+`pip install git+https://github.com/devinbarry/gitlab-project-export`
 
 or clone the project and install manually:
 
 ```bash
-git clone https://github.com/rvojcik/gitlab-project-export
+git clone https://github.com/devinbarry/gitlab-project-export
 cd gitlab-project-export/
 sudo python3 setup.py install
 ```
@@ -41,7 +41,7 @@ sudo python3 setup.py install
 or use it without installing to your environment (install only requirements):
 
 ```bash
-git clone https://github.com/rvojcik/gitlab-project-export
+git clone https://github.com/devinbarry/gitlab-project-export
 cd gitlab-project-export/
 pip install -f requirements.txt
 ```
@@ -76,7 +76,7 @@ Prepare and edit your config file
 
 Simply run the script with optional config parameter
 
-`./export.py -c /path/to/config.yml`
+`python export.py -c /path/to/config.yml`
 
 ## Configuration
 
@@ -148,12 +148,12 @@ gitlab:                                                   - gitlab configuration
 Now it's time to export our projects
 
 ```bash
-./export.py -c ./config1.yml -d
+python export.py -c ./config1.yml -d
 ```
 
 Your projects are now exported in `/data/export-dir`
 
-After that we use `gitlab-project-import.py` with `config2.yml` for importing into our pricate gitlab instance.
+After that we use `import.py` with `config2.yml` for importing into our private gitlab instance.
 
 ```bash
 ./import.py -c ./config2.yml -f ./gitlab-com-rvojcik-project1-20181224.tar.gz -p "rvojcik/project1"
