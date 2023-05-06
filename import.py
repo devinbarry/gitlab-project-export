@@ -5,8 +5,6 @@ from gitlab_export import config
 from gitlab_export.client import GitlabClient
 
 
-return_code = 0
-
 if __name__ == '__main__':
     # Parsing arguments
     parser = argparse.ArgumentParser(
@@ -51,7 +49,7 @@ if __name__ == '__main__':
     if args.project_path and args.filepath and os.path.isfile(args.filepath):
         if args.debug:
             print(f"Importing {args.project_path}")
-        status = gitlab.project_import(args.project_path, args.filepath)
+        status = gitlab.import_project(args.project_path, args.filepath)
 
         # Import successful
         if status:
