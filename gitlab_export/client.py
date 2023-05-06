@@ -91,10 +91,9 @@ class GitlabClient:
 
         return output
 
-    def project_export(self, project_id, status_check_max=12, seconds_between_checks=5):
+    def export_project(self, project_id, status_check_max=12, seconds_between_checks=5):
         """
-        Export Gitlab project. When project export is finished, store download URLs
-        in objects variable download_url ready to be downloaded.
+        Export Gitlab project. When project export is finished, return download URL.
         """
         # Schedule project export
         response = self._schedule_export(project_id)
@@ -115,18 +114,19 @@ class GitlabClient:
             status = json_data.get("export_status")
 
             if status == "finished" and "_links" in json_data:
-                print('Download URL: ' + json_data["_links"]["api_url"])
+                download_url = json_data["_links"]["api_url"]
+                print(f'Download URL: {download_url})
                 print(json_data["_links"])
-                return True
+                return download_url
             else:
                 print(f"Export status: {status}")
 
             time.sleep(seconds_between_checks)
 
         print(f"Export failed: {response.text}", file=sys.stderr)
-        return False
+        return None
 
-    def project_import(self, project_path, filepath):
+    def import_project(self, project_path, filepath):
         """ Import project to GitLab from file"""
         url_project_path = urllib.parse.quote(project_path, safe='')
         project_name = os.path.basename(project_path)
