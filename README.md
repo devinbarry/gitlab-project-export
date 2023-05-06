@@ -70,7 +70,7 @@ Prepare and edit your config file
 
 Simply run the script with optional config parameter
 
-`./gitlab-project-export.py -c /path/to/config.yml`
+`./export.py -c /path/to/config.yml`
 
 ## Configuration
 
