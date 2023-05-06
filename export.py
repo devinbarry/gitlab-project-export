@@ -54,7 +54,7 @@ def prepare_config_variables(c):
         print("Invalid value for retention_period. ignoring")
         retention_period = 0
 
-    return token, gitlab_url, ssl_verify, wait_between_exports, max_tries_number, retention_period
+    return token, gitlab_url, ssl_verify, wait_between_exports, retention_period
 
 
 def get_projects_to_export(gitlab_client, c):
@@ -109,10 +109,33 @@ def _create_file_name(c, project_name, project_dir):
 
     return dest_file
 
-def export_project(client, project_id, project_name, project_dir, dest_file, ssl_verify, token, retention_period, args):
+def export_project(client, project_id, project_name, dest_file, ssl_verify, token, download_only=False):
     global return_code
 
-    download_url = client.export_project(project_id=project_id)
+    if download_only:
+        download_url = client.get_download_link(project_id=project_id)
+    else:
+        download_url = client.export_project(project_id=project_id)
+
+    if download_url is not None:
+        if debug:
+            print(f'Download URL: {download_url}')
+        return_code += download_exported_project(download_url, project_name, dest_file, ssl_verify, token)
+    else:
+        print(f"Export failed for project {project_name}", file=sys.stderr)
+        return_code += 1
+
+
+def setup_download_directory(project_dir, dest_file, retention_period, args):
+    """
+    Set up a download directory by ensuring the destination file is ready for download and purging old files.
+
+    :param project_dir: The directory where the project is located.
+    :param dest_file: The file to be prepared for download.
+    :param retention_period: The number of days for which files should be retained in the project directory.
+    :param args: A collection of command-line arguments, including a 'force' option to overwrite existing files.
+    """
+    global return_code
 
     if debug:
         print(f"Destination {project_dir}")
@@ -129,14 +152,6 @@ def export_project(client, project_id, project_name, project_dir, dest_file, ssl
     if retention_period > 0:
         purge_old_files(project_dir, retention_period)
 
-    if download_url is not None:
-        if debug:
-            print(f"Successfully exported for {project_name}")
-        return_code += download_exported_project(download_url, project_name, dest_file, ssl_verify, token)
-    else:
-        print(f"Export failed for project {project_name}", file=sys.stderr)
-        return_code += 1
-
 
 
 def purge_old_files(project_dir, retention_period):
@@ -152,16 +167,13 @@ def purge_old_files(project_dir, retention_period):
         if os.path.isfile(f):
             if os.stat(f).st_mtime < now - (retention_period * 86400):
                 if debug:
-                    print(f"   deleting backup {f}")
+                    print(f"Deleting backup {f}")
                 os.remove(f)
 
 def download_exported_project(download_url, project, dest_file, ssl_verify, token):
     """
     function returns either 0 (success) or 1 (failure).
     """
-    if debug:
-        print(f"Download URL: {download_url}")
-
     r = requests.get(download_url, allow_redirects=True, stream=True, verify=ssl_verify,
                      headers={"PRIVATE-TOKEN": token})
 
@@ -190,14 +202,13 @@ def main():
 
     c = config.Config(args.config)
 
-    token, gitlab_url, ssl_verify, wait_between_exports, max_tries_number, retention_period = prepare_config_variables(c)
+    token, gitlab_url, ssl_verify, wait_between_exports, retention_period = prepare_config_variables(c)
 
     if debug:
         print(f"Initialising GitlabClient with URL: {gitlab_url}")
     client = GitlabClient(gitlab_url, token, ssl_verify)
 
     export_projects = get_projects_to_export(gitlab_client=client, c=c)
-
     if debug:
         print(f"Projects to export: {export_projects}")
 
@@ -215,8 +226,8 @@ def main():
         if debug:
             print(f" Destination file {dest_file}")
 
-        export_project(client, project_id, project_name, project_dir, dest_file, ssl_verify, token, retention_period,
-                       args)
+        setup_download_directory(project_dir, dest_file, retention_period, args)
+        export_project(client, project_id, project_name, dest_file, ssl_verify, token)
 
         if debug:
             print(f"Waiting between exports for {wait_between_exports} seconds")
