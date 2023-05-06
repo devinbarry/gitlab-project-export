@@ -31,10 +31,11 @@ gitlab:
   #
   # If you break the limit, API responds with 429 for your IP address for a while.
   #
-  # When you are using this in your private gitlab instance, you can set it to 0
+  # When you are using this in your private gitlab instance, you can decrease this value, but
+  # you need to adjust the api rate limit in your gitlab instance.
   wait_between_exports: 303
   # Maximum Retries
-  # Number of times to retry, if the export fails
+  # Currently not used for anything
   max_tries_number: 12
   # Whether to include archived projects
   include_archived: False
