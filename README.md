@@ -1,26 +1,32 @@
 # gitlab-project-export
 
-Simple Python project for exporting gitlab projects with Export Project feature in GitLab API.
+Simple Python project for importing/exporting Gitlab projects with [Project import and export](https://docs.gitlab.com/ee/api/project_import_export.html) feature in GitLab API.
 
-Primarily useful for remote backup of projects in GitLab.com to private storage server.
+Confrms to the V4 API for Gitlab CE, EE and Gitlab.com. Tested against latest Gitlab CE 15.11.2
+
+## Features
+
+- Allows moving projects between Gitlab instances.
+- Allows backup of multiple projects in one run.
+- Save backups to local directory or remote server via SSH.
+- Purge old backups.
+- Can be used in cron.
 
 ## Breaking Changes
 
-### 05-2020
+### May 2023
 
-Code was modified to work with Python3, not longer compatible with Python2.
+Project forked from [Robert Vojcik](https://github.com/rvojcik/gitlab-project-export) to add support for Gitlab CE 15.11.2 and to add a few features.
+Code cleaned up and refactored to use modern Python 3.9 features.
 
 ## Prerequisite
 
-* Configured Gitlab API Token, https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html
+* Configured Gitlab API Token: https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html
 
 ## Install
 
 Simply install via pip:
 
-`pip install gitlab-project-export`
-
-or
 
 `pip install git+https://github.com/rvojcik/gitlab-project-export`
 
