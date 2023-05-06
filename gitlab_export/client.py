@@ -128,6 +128,24 @@ class GitlabClient:
         print(f"Export failed: {response.text}", file=sys.stderr)
         return None
 
+    def get_download_link(self, project_id) -> str:
+        """Get download link for project"""
+        response = self._get_export_status(project_id)
+
+        if response.status_code != requests.codes.ok:
+            print(f"API responded with an unexpected status: {response.status_code} - {response.text}",
+                  file=sys.stderr)
+            return None
+
+        json_data = response.json()
+        status = json_data.get("export_status")
+
+        if status == "finished" and "_links" in json_data:
+            # Return download URL
+            return json_data["_links"]["api_url"]
+        else:
+            print(f"Export status: {status}")
+
     def import_project(self, project_path, filepath):
         """ Import project to GitLab from file"""
         url_project_path = urllib.parse.quote(project_path, safe='')
