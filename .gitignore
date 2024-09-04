@@ -101,3 +101,5 @@ venv.bak/
 config.yaml
 config.yml
 
+# Scripts dir
+scripts/
